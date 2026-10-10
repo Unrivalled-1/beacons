@@ -31,5 +31,6 @@ android {
 }
 
 dependencies {
-    // Phase 1 stays dependency-light. Compose and Play Services location arrive with the steps that need them.
+    // Fused location (on-device; works offline). Compose arrives with the sheets in Step 3.
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }
