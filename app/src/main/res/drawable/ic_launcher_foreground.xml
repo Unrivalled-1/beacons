@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Beam standing on a ground ring. Content stays inside the 66dp adaptive safe zone (21..87). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- outer ground ring, faint -->
+    <path
+        android:pathData="M30,70 a24,8.5 0 1,0 48,0 a24,8.5 0 1,0 -48,0"
+        android:strokeColor="#2900E6FF"
+        android:strokeWidth="1"
+        android:fillColor="#00000000" />
+    <!-- base ring -->
+    <path
+        android:pathData="M40,70 a14,5 0 1,0 28,0 a14,5 0 1,0 -28,0"
+        android:strokeColor="#F200E6FF"
+        android:strokeWidth="1.6"
+        android:fillColor="#00000000" />
+
+    <!-- soft glow -->
+    <path
+        android:pathData="M54,70 L54,22"
+        android:strokeWidth="14"
+        android:strokeLineCap="butt">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="70"
+                android:endX="54" android:endY="22">
+                <item android:offset="0" android:color="#2E00E6FF" />
+                <item android:offset="1" android:color="#0000E6FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- mid band -->
+    <path
+        android:pathData="M54,70 L54,22"
+        android:strokeWidth="6"
+        android:strokeLineCap="butt">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="70"
+                android:endX="54" android:endY="22">
+                <item android:offset="0" android:color="#9900E6FF" />
+                <item android:offset="0.35" android:color="#6600E6FF" />
+                <item android:offset="1" android:color="#0000E6FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- white-hot core -->
+    <path
+        android:pathData="M54,70 L54,22"
+        android:strokeWidth="2"
+        android:strokeLineCap="butt">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="70"
+                android:endX="54" android:endY="22">
+                <item android:offset="0" android:color="#FFFFFFFF" />
+                <item android:offset="0.5" android:color="#40FFFFFF" />
+                <item android:offset="1" android:color="#00FFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
