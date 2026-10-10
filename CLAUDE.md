@@ -46,6 +46,6 @@ Friends/sharing, maps, AI, accounts, backups, iOS, any network code, any visual 
 - Native Kotlin, Android only. Scene on a custom View (Canvas); sheets/settings may be Compose.
 - Placeholder applicationId `com.example.beacons`. Display name only in `res/values/strings.xml` (`app_name`).
 - Fonts bundled (OFL): Chakra Petch, Share Tech Mono in `res/font`; licenses in `third_party/fonts`.
-- Test device: OnePlus 12R (CPH2611, serial 620c75b9), Android 16. adb: `%LOCALAPPDATA%\Android\Sdk\platform-tools`.
+- Test device: OnePlus 12R (CPH2611), Android 16. adb: `%LOCALAPPDATA%\Android\Sdk\platform-tools`.
 - Each step ends with a CLAUDE_BRIEF_SUMMARY block: files changed, what changed, verification (observed vs
   UNVERIFIED), measured numbers, open questions, commit hash.
