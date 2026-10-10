@@ -33,7 +33,18 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.tan
 
-class Beacon(val id: Int, var name: String, var ci: Int, var x: Double, var y: Double, var born: Double = -9.0)
+class Beacon(val id: Int, var name: String, var ci: Int, var x: Double, var y: Double, var born: Double = -9.0) {
+    /** World position. x/y above are the scene-local metres relative to the current fix, recomputed per frame. */
+    var lat = Double.NaN
+    var lon = Double.NaN
+}
+
+/** State of the double-tap, hold, slide colour ring (mockup's R). */
+class RingUi {
+    var on = false
+    var x = 0.0; var y = 0.0; var cx = 0.0; var cy = 0.0
+    var t0 = 0.0; var sel = -1; var out = false
+}
 
 /** A scene-space beacon with its per-frame derived values (mockup's L[] items). */
 private class Item(val b: Beacon, val d: Double, val rel: Double, val r: Double, val sx: Double, val sz: Double) {
@@ -75,6 +86,62 @@ class Scene(private val ui: Typeface, private val mono: Typeface) {
 
     var onLock: (() -> Unit)? = null
     var onDetent: (() -> Unit)? = null
+    var onTick: (() -> Unit)? = null
+
+    val ring = RingUi()
+    /** Counts drops; picks the default colour when the ring is released on its centre. */
+    var dropN = 0
+
+    fun openRing(px: Double, py: Double) {
+        val rr = Constants.RR
+        ring.on = true; ring.x = px; ring.y = py; ring.t0 = t; ring.sel = -1; ring.out = false
+        ring.cx = clamp(px, rr + 22, max(rr + 22, W - rr - 22))
+        ring.cy = clamp(py, rr + 70, max(rr + 70, H - rr - 60))
+        onTick?.invoke()
+    }
+
+    fun ringMove(px: Double, py: Double) {
+        val dx = px - ring.x; val dy = py - ring.y; val d = hypot(dx, dy)
+        ring.out = d > Constants.RING_CANCEL_PX
+        if (d < Constants.RING_DEADZONE_PX) { ring.sel = -1; return }
+        var i = Math.round((atan2(dy, dx) / D2R + 90) / 45).toInt()
+        i = ((i % 8) + 8) % 8
+        if (i != ring.sel) { ring.sel = i; onTick?.invoke() }
+    }
+
+    /** Returns the chosen colour index, or -1 if released outside (cancel). */
+    fun closeRing(px: Double, py: Double): Int {
+        val d = hypot(px - ring.x, py - ring.y)
+        ring.on = false
+        if (d > Constants.RING_CANCEL_PX) return -1
+        return if (d < Constants.RING_DEADZONE_PX || ring.sel < 0) dropN % 8 else ring.sel
+    }
+
+    private fun drawRingUi(c: Canvas) {
+        if (!ring.on) return
+        val k = eob(clamp((t - ring.t0) / 0.28, 0.0, 1.0))
+        fill.color = Color.argb((0.38 * 255).toInt(), 0, 0, 0)
+        c.drawRect(0f, 0f, W.toFloat(), H.toFloat(), fill)
+        val globalA = if (ring.out) 0.3 else 1.0
+        for (i in 0 until 8) {
+            val a = (-90 + i * 45) * D2R
+            val rr = Constants.RR * k
+            val x = ring.cx + cos(a) * rr; val y = ring.cy + sin(a) * rr
+            val s = ring.sel == i; val cc = PAL[i].rgb(); val r = if (s) 17.0 else 11.0
+            fill.shader = RadialGradient(x.toFloat(), y.toFloat(), (r * 2.6).toFloat(), col(cc, 0.65 * globalA), col(cc, 0.0), Shader.TileMode.CLAMP)
+            c.drawCircle(x.toFloat(), y.toFloat(), (r * 2.6).toFloat(), fill); fill.shader = null
+            fill.color = col(cc, globalA); c.drawCircle(x.toFloat(), y.toFloat(), r.toFloat(), fill)
+            if (s) {
+                stroke.color = white(globalA); stroke.strokeWidth = 1.5f
+                c.drawCircle(x.toFloat(), y.toFloat(), (r + 5).toFloat(), stroke)
+            }
+        }
+        fill.color = white(0.9 * globalA); c.drawCircle(ring.cx.toFloat(), ring.cy.toFloat(), 3f, fill)
+        tMono.textSize = 11f; tMono.textAlign = Paint.Align.CENTER; ls(tMono, 2.4); tMono.color = white(globalA)
+        val label = if (ring.out) "RELEASE TO CANCEL" else if (ring.sel >= 0) PAL[ring.sel].name.uppercase() else "SLIDE TO PICK"
+        textMid(c, label, ring.cx, ring.cy + Constants.RR + 40, tMono)
+        ls(tMono, 0.0); stroke.strokeWidth = 1f
+    }
 
     // camera
     private var F = 1.0; private var th = 0.0; private var e = 1.0; private var zc = 0.0
@@ -262,6 +329,7 @@ class Scene(private val ui: Typeface, private val mono: Typeface) {
         drawLockLine(c, L)
         drawEdges(c, L)
         caption?.let { drawCaption(c, it) }
+        drawRingUi(c)
     }
 
     private fun Constants.Swatch.rgb(): IntArray = rgbCache.getOrPut(this) { hslRgb(h, l) }

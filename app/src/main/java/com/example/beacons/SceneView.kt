@@ -18,7 +18,8 @@ import kotlin.math.max
  *
  * Gestures are the mockup's, single finger: vertical drag tilts the camera (spring-settled),
  * horizontal drag turns only when [debugTurn] is on (real heading drives the scene otherwise),
- * a short tap selects/clears a beacon target.
+ * a short tap selects/clears a beacon target, a double tap on empty space opens the colour ring
+ * (hold, slide, release drops a beacon), a double tap on a beam opens its edit sheet.
  */
 class SceneView(context: Context, val scene: Scene) : View(context) {
     private val density = resources.displayMetrics.density
@@ -31,16 +32,26 @@ class SceneView(context: Context, val scene: Scene) : View(context) {
     /** Debug override: horizontal drag turns the scene instead of the compass. */
     var debugTurn = false
 
+    /** If a sheet is open, the first touch just closes it (mockup behaviour). Return true if it consumed the touch. */
+    var sheetOpen: (() -> Boolean)? = null
+    var closeSheets: (() -> Unit)? = null
+    var onDrop: ((colorIndex: Int) -> Unit)? = null
+    var onEdit: ((id: Int) -> Unit)? = null
+
+    private enum class Mode { PENDING, TILT, TURN, IGNORE, RING, EDITPRESS }
+
     private class Gesture(val x0: Double, val y0: Double, val t0: Long, val startP: Double) {
         var x = x0; var y = y0; var tl = t0
         var mode = Mode.PENDING
         var moved = 0.0
         var pv = 0.0
+        var hit = -1
     }
 
-    private enum class Mode { PENDING, TILT, TURN, IGNORE }
+    private class LastTap(val x: Double, val y: Double, val t: Long, val toggled: Boolean, val prev: Int)
 
     private var g: Gesture? = null
+    private var lastTap: LastTap? = null
 
     private val cb = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
@@ -59,7 +70,7 @@ class SceneView(context: Context, val scene: Scene) : View(context) {
     fun stop() {
         running = false
         Choreographer.getInstance().removeFrameCallback(cb)
-        g = null; scene.tilting = false; scene.dragH = false
+        g = null; scene.tilting = false; scene.dragH = false; scene.ring.on = false
     }
 
     override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
@@ -98,8 +109,20 @@ class SceneView(context: Context, val scene: Scene) : View(context) {
         val now = e.eventTime
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                g = Gesture(x, y, now, scene.p)
+                if (sheetOpen?.invoke() == true) { closeSheets?.invoke(); return true }
+                val G = Gesture(x, y, now, scene.p)
+                g = G
                 scene.vh = 0.0; scene.turn = null
+                val lt = lastTap
+                val dbl = lt != null && now - lt.t < Constants.DOUBLE_TAP_MS &&
+                    hypot(x - lt.x, y - lt.y) < Constants.DOUBLE_TAP_SLOP_PX
+                if (dbl && lt != null) {
+                    val hid = pick(x, y)
+                    if (lt.toggled) scene.targetId = lt.prev
+                    lastTap = null
+                    if (hid != -1) { G.mode = Mode.EDITPRESS; G.hit = hid }
+                    else { G.mode = Mode.RING; scene.openRing(x, y) }
+                }
             }
             MotionEvent.ACTION_MOVE -> {
                 val G = g ?: return true
@@ -122,6 +145,7 @@ class SceneView(context: Context, val scene: Scene) : View(context) {
                         scene.hdg = wrap(scene.hdg + dh); scene.turn = null
                         scene.vh = clamp(scene.vh * 0.5 + (dh / dts) * 0.5, -Constants.TURN_VEL_MAX, Constants.TURN_VEL_MAX)
                     }
+                    Mode.RING -> scene.ringMove(x, y)
                     else -> {}
                 }
                 G.x = x; G.y = y; G.tl = now
@@ -130,6 +154,7 @@ class SceneView(context: Context, val scene: Scene) : View(context) {
                 val G = g ?: return true
                 g = null
                 scene.dragH = false; scene.tilting = false
+                val up = e.actionMasked == MotionEvent.ACTION_UP
                 when (G.mode) {
                     Mode.TILT -> {
                         scene.pv = G.pv
@@ -137,10 +162,18 @@ class SceneView(context: Context, val scene: Scene) : View(context) {
                         scene.moving = true
                     }
                     Mode.TURN -> { if ((now - G.tl) > 90) scene.vh = 0.0 }
+                    Mode.RING -> {
+                        val ci = if (up) scene.closeRing(x, y) else { scene.ring.on = false; -1 }
+                        if (ci >= 0) onDrop?.invoke(ci)
+                    }
+                    Mode.EDITPRESS -> { if (up && G.moved < 12) onEdit?.invoke(G.hit) }
                     Mode.PENDING -> {
-                        if (e.actionMasked == MotionEvent.ACTION_UP && now - G.t0 < Constants.TAP_MAX_MS && G.moved < Constants.TAP_SLOP_PX) {
+                        if (up && now - G.t0 < Constants.TAP_MAX_MS && G.moved < Constants.TAP_SLOP_PX) {
                             val id = pick(x, y)
-                            if (id != -1) scene.targetId = if (scene.targetId == id) -1 else id
+                            val prev = scene.targetId
+                            var tog = false
+                            if (id != -1) { scene.targetId = if (prev == id) -1 else id; tog = true }
+                            lastTap = LastTap(x, y, now, tog, prev)
                         }
                     }
                     else -> {}
