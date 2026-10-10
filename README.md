@@ -6,6 +6,11 @@ follow a column of colored light back to it. Point the phone and the beams line 
 Pure-black screen. Colored light beams standing on a ground grid. A compass ring in the sky. No map, no account,
 no network.
 
+## [⬇ Download for Android (APK)](https://github.com/Unrivalled-1/beacons/releases/latest/download/beacons.apk)
+
+**On your phone:** tap the link above, then tap the downloaded file and choose **Install**.
+Android 10 or newer. [Step-by-step help](#install) if it asks for permissions.
+
 > Status: **v0.3.0, Phase 1 preview.** The core loop works on a real device. The home-screen widget and the display
 > settings (labels, ring spacing, zoom, units) are not built yet. See [Status](#status).
 
@@ -31,11 +36,17 @@ no network.
 
 ## Install
 
-Download `beacons-0.3.0.apk` from the [Releases](../../releases) page and sideload it (you may need to allow
-installs from your browser or file manager). Android 10 (API 29) or newer. On first launch, grant **precise
-location** while using the app.
+1. On your phone, tap **[Download for Android](https://github.com/Unrivalled-1/beacons/releases/latest/download/beacons.apk)**.
+   If the browser warns that this type of file can be harmful, tap **Download anyway**.
+2. Tap **Open** on the finished download (or find `beacons.apk` in your Files or Downloads app).
+3. The first time, Android asks to allow installs from your browser. Turn on **Allow from this source**, go back,
+   and tap **Install**.
+4. Play Protect may say "unrecognized developer". Tap **Install anyway**. That is normal for apps outside the
+   Play Store.
+5. Open the app and allow **precise location** while using the app.
 
-The APK is signed with a project key. Check the SHA-256 listed in the release notes against your download.
+Requires Android 10 (API 29) or newer. The APK is signed with a project key; the SHA-256 is listed in each
+[release](../../releases) if you want to verify your download.
 
 ## Build from source
 
