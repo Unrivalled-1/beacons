@@ -25,6 +25,7 @@ class MainActivity : Activity() {
     private lateinit var view: SceneView
     private lateinit var heading: HeadingSensor
     private lateinit var loc: LocationSource
+    private lateinit var haptics: Haptics
     private lateinit var hud: TextView
     private lateinit var latF: EditText
     private lateinit var lonF: EditText
@@ -42,6 +43,9 @@ class MainActivity : Activity() {
         view = SceneView(this, scene)
         heading = HeadingSensor(this)
         loc = LocationSource(this)
+        haptics = Haptics(this)
+        scene.onLock = { haptics.clink() }
+        scene.onDetent = { haptics.detent() }
 
         val root = FrameLayout(this)
         root.setBackgroundColor(Color.BLACK)
@@ -66,7 +70,10 @@ class MainActivity : Activity() {
         val ahead = btn("100M AHEAD").apply { setOnClickListener { placeAhead(100.0) } }
         panel.addView(latF, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         panel.addView(lonF, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        panel.addView(set); panel.addView(here); panel.addView(ahead)
+        turnBtn = btn("COMPASS").apply {
+            setOnClickListener { setDebugTurn(!view.debugTurn) }
+        }
+        panel.addView(set); panel.addView(here); panel.addView(ahead); panel.addView(turnBtn)
         root.addView(panel, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         setContentView(root)
 
@@ -90,6 +97,14 @@ class MainActivity : Activity() {
         if (beacon == null) { beacon = Beacon(1, "Debug", 4, 0.0, 0.0); scene.beacons.add(beacon!!) }
     }
 
+    private lateinit var turnBtn: Button
+
+    /** Debug only: true = scene follows finger drag instead of the compass. Never persists across resumes. */
+    private fun setDebugTurn(on: Boolean) {
+        view.debugTurn = on
+        turnBtn.text = if (on) "DRAG (DEBUG)" else "COMPASS"
+    }
+
     private fun placeAhead(m: Double) {
         val l = loc.last ?: return
         val brg = heading.trueHeading * D2R
@@ -100,7 +115,7 @@ class MainActivity : Activity() {
     }
 
     private fun tick() {
-        scene.hdg = heading.trueHeading
+        if (!view.debugTurn) scene.hdg = heading.trueHeading
         val l = loc.last
         scene.caption = if (heading.hasSample && heading.unreliable) "COMPASS LOW  WAVE PHONE IN A FIGURE 8" else null
         var info = "NO FIX"
@@ -134,6 +149,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        setDebugTurn(false)
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 1)
         } else startSensors()
